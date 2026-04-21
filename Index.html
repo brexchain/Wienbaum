@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vienna Tree Sentinel | Executive Dashboard</title>
+    
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { margin: 0; background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        #map { flex: 1; min-height: 50vh; width: 100%; border-bottom: 2px solid #1e293b; }
+        .registry-container { height: 40vh; display: flex; flex-direction: column; background: #0f172a; }
+        .virtual-table { flex: 1; overflow-y: auto; border-top: 1px solid #334155; }
+        .status-badge { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+        .filter-btn.active { border-color: #10b981; background: #064e3b; color: #fff; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="absolute top-4 right-4 z-10 flex flex-col gap-2">
+        <div class="bg-slate-900/95 backdrop-blur p-4 rounded-2xl border border-slate-700 shadow-2xl w-48">
+            <p class="text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest text-center">Vitality Filter</p>
+            <div class="flex flex-col gap-2" id="vitality-controls">
+                <button onclick="toggleVitality(0)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="0">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Class 0: Ideal
+                </button>
+                <button onclick="toggleVitality(1)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="1">
+                    <div class="w-2 h-2 rounded-full bg-green-400"></div> Class 1: Healthy
+                </button>
+                <button onclick="toggleVitality(2)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="2">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400"></div> Class 2: Stressed
+                </button>
+                <button onclick="toggleVitality(3)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="3">
+                    <div class="w-2 h-2 rounded-full bg-orange-500"></div> Class 3: Critical
+                </button>
+                <button onclick="toggleVitality(4)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="4">
+                    <div class="w-2 h-2 rounded-full bg-red-600"></div> Class 4: Dead
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="registry-container p-6">
+        <div class="flex justify-between items-end mb-4">
+            <div>
+                <h2 class="text-2xl font-black tracking-tight text-white">Vienna Tree <span class="text-emerald-500">Sentinel</span></h2>
+                <div class="flex gap-4 mt-1 text-[11px] font-bold text-slate-500 uppercase">
+                    <span>Registry Records: <span id="count-visible" class="text-slate-200">200,000</span></span>
+                    <span>Status: <span id="sync-status" class="text-emerald-400">Live IoT Link</span></span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="filterMaintenance()" id="maint-btn" class="bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition text-slate-300">
+                    Overdue (>365d)
+                </button>
+                <input type="text" id="search" oninput="updateRegistry()" placeholder="Search species (e.g. Acer)..." class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm w-64 outline-none focus:border-emerald-500 text-white">
+            </div>
+        </div>
+
+        <div class="virtual-table border border-slate-800 rounded-xl bg-slate-900/40">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-slate-800 z-20">
+                    <tr class="text-[10px] font-black text-slate-400 uppercase border-b border-slate-700">
+                        <th class="p-4">ID / Species</th>
+                        <th class="p-4">Vitality Class</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4">Last Check</th>
+                        <th class="p-4">Height</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 1. CONFIGURATION - REPLACE WITH YOUR VERCEL BLOB URL
+        const PMTILES_URL = "REPLACE_WITH_YOUR_BLOB_URL_HERE.pmtiles";
+        
+        let allTrees = [];
+        let activeVitalities = [0, 1, 2, 3, 4];
+        let maintenanceMode = false;
+
+        // 2. DATA GENERATOR (Mocking 200k distribution logic)
+        function initData() {
+            const species = [
+                {n: "Platanus x hispanica", s: "n.a."},
+                {n: "Malus sylvestris", s: "Edible"},
+                {n: "Taxus baccata", s: "Poisonous"},
+                {n: "Acer platanoides", s: "n.a."},
+                {n: "Tilia cordata", s: "n.a."}
+            ];
+            // Generating 100 sample rows for the UI (Virtualization simulation)
+            for(let i = 0; i < 100; i++) {
+                const sp = species[Math.floor(Math.random() * species.length)];
+                const v = Math.floor(Math.random() * 5);
+                const days = Math.floor(Math.random() * 500);
+                allTrees.push({
+                    id: 142000 + i,
+                    name: sp.n,
+                    status: sp.s,
+                    vitality: v,
+                    lastCheck: days,
+                    height: Math.floor(Math.random() * 30) + 5
+                });
+            }
+        }
+        initData();
+
+        // 3. MAPBOX / PMTILES PROTOCOL
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.add);
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+            center: [16.3738, 48.2082], zoom: 12
+        });
+
+        map.on('load', () => {
+            // Only attempt to add source if URL is replaced
+            if(!PMTILES_URL.includes("REPLACE")) {
+                map.addSource('vienna_trees', {
+                    type: 'vector',
+                    url: `pmtiles://${PMTILES_URL}`
+                });
+
+                map.addLayer({
+                    id: 'tree-layer',
+                    type: 'circle',
+                    source: 'vienna_trees',
+                    'source-layer': 'vienna_trees', // Match your PMTiles internal layer name
+                    paint: {
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6],
+                        'circle-color': [
+                            'match', ['get', 'GATTUNG'], 
+                            ['Malus', 'Pyrus', 'Prunus'], '#facc15', // Edible
+                            ['Taxus', 'Laburnum'], '#a855f7', // Poisonous
+                            ['step', ['get', 'BAUMHOEHE'], 
+                                '#6ee7b7', 8, '#34d399', 13, '#10b981', 18, '#059669', 23, '#047857', 28, '#065f46', 33, '#064e3b'
+                            ]
+                        ]
+                    }
+                });
+            }
+            updateRegistry();
+        });
+
+        // 4. UI CONTROLS
+        function toggleVitality(v) {
+            const btn = document.querySelector(`button[data-v="${v}"]`);
+            if (activeVitalities.includes(v)) {
+                activeVitalities = activeVitalities.filter(x => x !== v);
+                btn.classList.remove('active');
+            } else {
+                activeVitalities.push(v);
+                btn.classList.add('active');
+            }
+            applyMapFilters();
+        }
+
+        function filterMaintenance() {
+            maintenanceMode = !maintenanceMode;
+            document.getElementById('maint-btn').classList.toggle('active', maintenanceMode);
+            applyMapFilters();
+        }
+
+        function applyMapFilters() {
+            // GPU-Side Filtering for Map
+            const filter = ['all', ['in', ['get', 'vitality'], ['literal', activeVitalities]]];
+            if (maintenanceMode) filter.push(['>', ['get', 'lastCheck'], 365]);
+            
+            if (map.getLayer('tree-layer')) {
+                map.setFilter('tree-layer', filter);
+            }
+            updateRegistry();
+        }
+
+        function updateRegistry() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const filtered = allTrees.filter(t => 
+                activeVitalities.includes(t.vitality) && 
+                (!maintenanceMode || t.lastCheck > 365) &&
+                (t.name.toLowerCase().includes(searchTerm))
+            );
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = filtered.map(t => `
+                <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition cursor-pointer">
+                    <td class="p-4">
+                        <span class="text-[10px] font-mono text-slate-500">#${t.id}</span><br>
+                        <span class="font-bold text-sm text-white">${t.name}</span>
+                    </td>
+                    <td class="p-4">
+                        <span class="status-badge" style="background: ${getVitColor(t.vitality)}">Class ${t.vitality}</span>
+                    </td>
+                    <td class="p-4">
+                        <span class="status-badge ${getStatusStyle(t.status)}">${t.status}</span>
+                    </td>
+                    <td class="p-4 font-mono text-xs ${t.lastCheck > 365 ? 'text-red-400 font-bold' : 'text-slate-400'}">
+                        ${t.lastCheck} days ago
+                    </td>
+                    <td class="p-4 font-mono text-emerald-400 font-bold">${t.height}m</td>
+                </tr>
+            `).join('');
+        }
+
+        function getVitColor(v) {
+            const colors = ['#10b981', '#4ade80', '#facc15', '#f97316', '#ef4444'];
+            return colors[v];
+        }
+
+        function getStatusStyle(s) {
+            if(s === 'Edible') return 'bg-yellow-500 text-black';
+            if(s === 'Poisonous') return 'bg-purple-600 text-white';
+            return 'bg-slate-700 text-slate-300';
+        }
+    </script>
+</body>
+</html>
