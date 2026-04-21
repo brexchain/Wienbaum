@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vienna Tree Sentinel | Live Dashboard</title>
+    <script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        #map { flex: 1; min-height: 60vh; width: 100%; border-bottom: 2px solid #1e293b; }
+        .registry-container { height: 35vh; display: flex; flex-direction: column; background: #0f172a; }
+        .virtual-table { flex: 1; overflow-y: auto; border: 1px solid #334155; }
+        .status-badge { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .filter-btn.active { border-color: #10b981; background: #064e3b; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="registry-container p-6">
+        <div class="flex justify-between items-end mb-4">
+            <div>
+                <h2 class="text-2xl font-black tracking-tight uppercase">Vienna <span class="text-emerald-500">Tree Sentinel</span></h2>
+                <p class="text-xs text-slate-400 font-bold">LIVE DATA: 200,000+ REGISTERED TREES</p>
+            </div>
+            <div class="flex gap-2">
+                <div class="text-right mr-4">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Status</p>
+                    <p class="text-sm font-mono text-emerald-400">Connected to Vercel Blob</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="virtual-table rounded-xl bg-slate-900/40">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-slate-800 z-20">
+                    <tr class="text-[10px] font-black text-slate-400 uppercase">
+                        <th class="p-4">ID / Species</th>
+                        <th class="p-4">Vitality</th>
+                        <th class="p-4">Condition</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr class="text-slate-500"><td colspan="3" class="p-4 text-center">Click a tree on the map for details...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 1. Setup PMTiles Protocol
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.add);
+
+        // 2. Initialize Map
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+            center: [16.3738, 48.2082], 
+            zoom: 12
+        });
+
+        map.on('load', () => {
+            // 3. Add the Source using your specific Blob URL
+            map.addSource('vienna-trees', {
+                type: 'vector',
+                url: 'pmtiles://https://vy49xr5oarsimwml.public.blob.vercel-storage.com/baeume_wien.pmtiles'
+            });
+
+            // 4. Add Visual Layer
+            map.addLayer({
+                'id': 'trees-layer',
+                'source': 'vienna-trees',
+                'source-layer': 'baeume_wien', // Standard internal name for Vienna tree export
+                'type': 'circle',
+                'paint': {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6],
+                    'circle-color': [
+                        'step', ['get', 'VITALITAET'], // Based on Vienna's 0-4 scale
+                        '#10b981', 1, // Healthy
+                        '#10b981', 2, // Stable
+                        '#fbbf24', 3, // Stressed
+                        '#f97316', 4, // Critical
+                        '#ef4444'     // Dead/Dying
+                    ],
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#0f172a'
+                }
+            });
+
+            // 5. Interaction: Update Table on Click
+            map.on('click', 'trees-layer', (e) => {
+                const props = e.features[0].properties;
+                const tbody = document.getElementById('table-body');
+                
+                tbody.innerHTML = `
+                    <tr class="border-b border-slate-800 bg-slate-800/30">
+                        <td class="p-4 text-sm font-bold">#${props.OBJECTID || 'N/A'}<br><span class="text-xs font-normal text-slate-400">${props.GATTUNG_ART || 'Unknown Species'}</span></td>
+                        <td class="p-4 font-mono text-emerald-400">Class ${props.VITALITAET || '?'}</td>
+                        <td class="p-4 text-xs">${props.STAMMTUMFANG ? props.STAMMTUMFANG + 'cm Trunk' : 'N/A'}</td>
+                    </tr>
+                `;
+            });
+
+            // Change cursor on hover
+            map.on('mouseenter', 'trees-layer', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'trees-layer', () => map.getCanvas().style.cursor = '');
+        });
+    </script>
+</body>
+</html>
