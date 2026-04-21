@@ -1,230 +1,1086 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vienna Tree Sentinel | Executive Dashboard</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=0">
+  <title>Coffeewerk Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Mulish:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    /* CSS Variables & Theming */
+    :root {
+      /* Light fallback */
+      --bg:#ffffff; --card:#f7f5f2; --ink:#18160f; --muted:#6e6c58;
+      --line:#e5e1d8; --brand:#184030; --accent:#C8874A; --ok:#1b7f4a; --bad:#b42318;
+    }
+    :root[data-theme="dark"] {
+      /* Coffee Colors (Default) */
+      --bg: #1A1008;
+      --card: #221508;
+      --card-hover: #2C1C0E;
+      --ink: #F0DEC0;
+      --muted: #C4A882;
+      --line: #3D2810;
+      --line-strong: #4E3418;
+      --brand: #6B3A1F;
+      --brand-light: #7D4525;
+      --accent: #C8874A;
+      --ok: #2E8555;
+      --bad: #d94135;
+      --gold: #FFD700;
+      --glass: rgba(26, 16, 8, 0.85);
+    }
     
-    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
-    <script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Mulish', sans-serif; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); height: 100%; overflow: hidden; overscroll-behavior-y: none; }
     
-    <style>
-        body { margin: 0; background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        #map { flex: 1; min-height: 50vh; width: 100%; border-bottom: 2px solid #1e293b; }
-        .registry-container { height: 40vh; display: flex; flex-direction: column; background: #0f172a; }
-        .virtual-table { flex: 1; overflow-y: auto; border-top: 1px solid #334155; }
-        .status-badge { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
-        .filter-btn.active { border-color: #10b981; background: #064e3b; color: #fff; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    </style>
+    h1, h2, h3, .serif { font-family: 'Fraunces', serif; font-weight: 300; }
+    button { cursor: pointer; border: none; outline: none; background: transparent; color: inherit; font-size: 1rem; }
+    img { max-width: 100%; display: block; }
+    
+    /* Layout & Utilities */
+    .app-container { max-width: 480px; margin: 0 auto; height: 100vh; height: 100dvh; display: flex; flex-direction: column; position: relative; overflow: hidden; background: var(--bg); box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+    .scrollable { flex: 1; overflow-y: auto; padding-bottom: 120px; }
+    .hidden { display: none !important; }
+    .flex-row { display: flex; align-items: center; }
+    .flex-col { display: flex; flex-direction: column; }
+    .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; }
+    .p-4 { padding: 16px; }
+    .text-sm { font-size: 0.85rem; } .text-xs { font-size: 0.75rem; }
+    .font-bold { font-weight: 800; }
+    .text-muted { color: var(--muted); }
+    .text-accent { color: var(--accent); }
+    
+    /* Buttons */
+    .btn-primary { background: var(--accent); color: #1A1008; border-radius: 99px; padding: 14px 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.1s, filter 0.2s; box-shadow: 0 4px 15px rgba(200,135,74,0.3); }
+    .btn-primary:active { transform: scale(0.98); filter: brightness(0.9); }
+    .btn-secondary { background: var(--card-hover); border: 1px solid var(--line-strong); color: var(--ink); border-radius: 99px; padding: 10px 18px; font-weight: 600; }
+    .btn-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card); border: 1px solid var(--line); color: var(--ink); }
+    
+    /* Header */
+    .header { padding: 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .logo-img { width: 36px; height: 36px; border-radius: 8px; background: var(--card); border: 1px solid var(--line-strong); object-fit: contain; }
+    .chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--card); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+    .table-chip { border-color: var(--accent); color: var(--accent); }
+    
+    /* Carousel (Specials / Faves) */
+    .horizontal-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 0 16px 16px 16px; scrollbar-width: none; }
+    .horizontal-scroll::-webkit-scrollbar { display: none; }
+    .special-card { min-width: 260px; scroll-snap-align: start; background: linear-gradient(135deg, var(--card), var(--bg)); border: 1px solid var(--accent); border-radius: 16px; padding: 16px; display: flex; gap: 12px; position: relative; overflow: hidden; }
+    .special-card::before { content: '⭐ Special'; position: absolute; top: 0; right: 0; background: var(--accent); color: #1A1008; font-size: 0.65rem; font-weight: 900; padding: 4px 8px; border-bottom-left-radius: 8px; text-transform: uppercase; }
+    
+    /* Tabs */
+    .category-tabs { display: flex; gap: 8px; padding: 0 16px 16px; overflow-x: auto; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; border-radius: 99px; font-size: 0.85rem; font-weight: 800; color: var(--muted); border: 1px solid transparent; transition: all 0.2s; white-space: nowrap; }
+    .tab.active { background: var(--card-hover); color: var(--accent); border-color: var(--accent); }
+    
+    /* Menu List */
+    .menu-grid { display: flex; flex-direction: column; gap: 12px; padding: 0 16px; }
+    .menu-item { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s, border-color 0.2s; position: relative; }
+    .menu-item:active { transform: scale(0.98); }
+    .menu-item .info { display: flex; gap: 12px; align-items: center; flex: 1; }
+    .menu-item .icon { font-size: 2rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--card-hover); border-radius: 12px; }
+    .menu-item .details { display: flex; flex-direction: column; flex: 1; }
+    .menu-item .title { font-weight: 800; font-size: 1rem; margin-bottom: 2px; }
+    .menu-item .desc { font-size: 0.8rem; color: var(--muted); line-height: 1.3; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .menu-item .price { font-weight: 900; color: var(--accent); }
+    .menu-item .actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .add-btn { background: var(--accent); color: #000; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; }
+    .fav-btn { color: var(--muted); font-size: 1.2rem; }
+    .fav-btn.active { color: #f91880; }
+    .qty-badge { position: absolute; top: -6px; right: -6px; background: var(--accent); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 0.75rem; font-weight: 900; display: flex; align-items: center; justify-content: center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    
+    /* Floating Cart */
+    .floating-cart { position: absolute; bottom: 24px; left: 16px; right: 16px; z-index: 20; background: var(--accent); color: #1A1008; border-radius: 99px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(150%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .floating-cart.visible { transform: translateY(0); }
+    .cart-info { display: flex; align-items: center; gap: 12px; font-weight: 900; font-size: 1.1rem; }
+    .cart-pill { background: #1A1008; color: var(--accent); padding: 4px 10px; border-radius: 99px; font-size: 0.85rem; }
+    
+    /* Overlays & Sheets */
+    .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .overlay.active { opacity: 1; pointer-events: auto; }
+    .sheet { background: var(--bg); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 24px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1); max-height: 90vh; overflow-y: auto; }
+    .overlay.active .sheet { transform: translateY(0); }
+    .sheet-handle { width: 40px; height: 4px; background: var(--line-strong); border-radius: 4px; margin: 0 auto 20px; }
+    
+    /* Fullscreen View (Checkout / Confirm) */
+    .fullscreen-view { position: absolute; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1); }
+    .fullscreen-view.active { transform: translateY(0); }
+    
+    /* Gamification & Visuals */
+    .stamp-card { background: var(--card); border: 2px dashed var(--line-strong); border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; margin: 16px 0; }
+    .stamp { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line-strong); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.3; }
+    .stamp.earned { background: var(--accent); border-color: var(--accent); color: #000; opacity: 1; animation: stampPop 0.5s; }
+    .progress-bar-container { height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; margin: 16px 0; }
+    .progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width 1s linear; }
+    .feedback-scroll { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 8px; margin: 16px 0; scrollbar-width: none; }
+    .feedback-scroll::-webkit-scrollbar { display: none; }
+    .feedback-tile { padding: 12px 16px; background: var(--card); border: 1px solid var(--line-strong); border-radius: 12px; white-space: nowrap; font-weight: 700; font-size: 0.9rem; transition: all 0.2s; }
+    .feedback-tile.selected { background: var(--accent); border-color: var(--accent); color: #000; transform: scale(1.05); }
+    
+    /* Mini-game Canvas */
+    #coffeetris { background: #000; border: 2px solid var(--line-strong); border-radius: 8px; margin: 16px auto; display: block; image-rendering: pixelated; }
+
+    /* Animations */
+    @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    @keyframes stampPop { 0% { transform: scale(0.5) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+    .shake { animation: shake 0.4s; }
+    
+    /* Emoji Rain Container */
+    #emoji-rain { position: absolute; inset: 0; pointer-events: none; z-index: 101; overflow: hidden; }
+    .raindrop { position: absolute; top: -50px; font-size: 24px; animation: fall linear forwards; }
+    @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+  </style>
 </head>
 <body>
-
-    <div id="map"></div>
-
-    <div class="absolute top-4 right-4 z-10 flex flex-col gap-2">
-        <div class="bg-slate-900/95 backdrop-blur p-4 rounded-2xl border border-slate-700 shadow-2xl w-48">
-            <p class="text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest text-center">Vitality Filter</p>
-            <div class="flex flex-col gap-2" id="vitality-controls">
-                <button onclick="toggleVitality(0)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="0">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Class 0: Ideal
-                </button>
-                <button onclick="toggleVitality(1)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="1">
-                    <div class="w-2 h-2 rounded-full bg-green-400"></div> Class 1: Healthy
-                </button>
-                <button onclick="toggleVitality(2)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="2">
-                    <div class="w-2 h-2 rounded-full bg-yellow-400"></div> Class 2: Stressed
-                </button>
-                <button onclick="toggleVitality(3)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="3">
-                    <div class="w-2 h-2 rounded-full bg-orange-500"></div> Class 3: Critical
-                </button>
-                <button onclick="toggleVitality(4)" class="filter-btn active flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-[11px] font-bold transition-all" data-v="4">
-                    <div class="w-2 h-2 rounded-full bg-red-600"></div> Class 4: Dead
-                </button>
-            </div>
+  <div class="app-container" id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area" id="logo-trigger">
+        <img src="https://www.coffeewerk.at/wp-content/uploads/2024/09/coffeewerk-logo.png" alt="Logo" class="logo-img">
+        <div class="flex-col">
+          <span class="font-bold serif" style="font-size: 1.1rem; line-height: 1.1;">Coffeewerk</span>
+          <span class="text-xs text-muted" data-i18n="greeting">Hi, Guest! ☕</span>
         </div>
+      </div>
+      <div class="flex-row gap-2">
+        <button class="btn-icon" id="lang-btn">DE</button>
+        <button class="btn-icon" id="theme-btn">🌙</button>
+        <button class="chip table-chip" id="table-btn"><span id="table-label" data-i18n="select_table">Tisch wäheln</span> ▼</button>
+      </div>
+    </header>
+
+    <div class="scrollable">
+      
+      <!-- Last Order / Reorder (Shows if exists) -->
+      <div id="reorder-section" class="hidden p-4">
+        <h3 class="text-sm font-bold text-accent mb-2" style="margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="last_order">letzte bestellung</h3>
+        <div class="horizontal-scroll" id="reorder-list" style="padding: 0 0 8px 0;"></div>
+      </div>
+
+      <!-- Favorites -->
+      <div id="favorites-section" class="hidden p-4" style="padding-top:0;">
+        <h3 class="text-sm font-bold text-muted mb-2" style="margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="favorites">Favoriten</h3>
+        <div class="horizontal-scroll" id="favorites-list" style="padding: 0 0 8px 0;"></div>
+      </div>
+
+      <!-- Daily Specials Scroll -->
+      <div class="p-4" style="padding-bottom: 8px;">
+        <h2 class="serif" style="font-size: 1.5rem; margin: 0 0 12px 0;" data-i18n="specials_title">Specials des Tages ✨</h2>
+        <div class="horizontal-scroll" id="specials-container"></div>
+      </div>
+
+      <!-- Menu Categories -->
+      <div class="category-tabs" id="cat-tabs">
+        <button class="tab active" data-cat="all" data-i18n="cat_all">Alle</button>
+        <button class="tab" data-cat="kaffee" data-i18n="cat_coffee">Kaffee</button>
+        <button class="tab" data-cat="essen" data-i18n="cat_food">Essen & Sweets</button>
+        <button class="tab" data-cat="alkohol" data-i18n="cat_alcohol">Drinks</button>
+      </div>
+
+      <!-- Menu List -->
+      <div class="menu-grid" id="menu-container"></div>
+      
     </div>
 
-    <div class="registry-container p-6">
-        <div class="flex justify-between items-end mb-4">
-            <div>
-                <h2 class="text-2xl font-black tracking-tight text-white">Vienna Tree <span class="text-emerald-500">Sentinel</span></h2>
-                <div class="flex gap-4 mt-1 text-[11px] font-bold text-slate-500 uppercase">
-                    <span>Registry Records: <span id="count-visible" class="text-slate-200">200,000</span></span>
-                    <span>Status: <span id="sync-status" class="text-emerald-400">Live IoT Link</span></span>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="filterMaintenance()" id="maint-btn" class="bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition text-slate-300">
-                    Overdue (>365d)
-                </button>
-                <input type="text" id="search" oninput="updateRegistry()" placeholder="Search species (e.g. Acer)..." class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm w-64 outline-none focus:border-emerald-500 text-white">
-            </div>
-        </div>
-
-        <div class="virtual-table border border-slate-800 rounded-xl bg-slate-900/40">
-            <table class="w-full text-left border-collapse">
-                <thead class="sticky top-0 bg-slate-800 z-20">
-                    <tr class="text-[10px] font-black text-slate-400 uppercase border-b border-slate-700">
-                        <th class="p-4">ID / Species</th>
-                        <th class="p-4">Vitality Class</th>
-                        <th class="p-4">Status</th>
-                        <th class="p-4">Last Check</th>
-                        <th class="p-4">Height</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    </tbody>
-            </table>
-        </div>
+    <!-- Floating Cart Button -->
+    <div class="floating-cart" id="cart-float-btn">
+      <div class="cart-info">
+        <span class="cart-pill" id="cart-count">0</span>
+        <span data-i18n="cart_view">Warenkorb</span>
+      </div>
+      <div class="font-bold" id="cart-total">€0.00</div>
     </div>
 
-    <script>
-        // 1. CONFIGURATION - REPLACE WITH YOUR VERCEL BLOB URL
-        const PMTILES_URL = "REPLACE_WITH_YOUR_BLOB_URL_HERE.pmtiles";
+    <!-- Modals & Overlays -->
+    <!-- 1. Onboarding Overlay -->
+    <div class="overlay" id="onboarding-overlay">
+      <div class="sheet" style="padding-bottom: 40px; transform: translateY(0);">
+        <h2 class="serif" style="font-size: 2rem; margin: 0 0 16px;" data-i18n="onbaording_title">Willkommen! 👋</h2>
+        <p class="text-muted" style="margin-bottom: 24px;" data-i18n="onboarding_desc">Wie dürfen wir dich nennen? (Wähle einen Namen oder tipp einen ein)</p>
         
-        let allTrees = [];
-        let activeVitalities = [0, 1, 2, 3, 4];
-        let maintenanceMode = false;
+        <input type="text" id="ob-name-input" placeholder="Dein Name..." style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--card); color: var(--ink); font-size: 1.1rem; font-weight: 800; outline: none; margin-bottom: 16px;">
+        
+        <div class="flex-row gap-2" style="flex-wrap: wrap; margin-bottom: 24px;" id="funny-names-container"></div>
+        
+        <label class="text-muted text-sm font-bold" data-i18n="lang_select">Sprache wählen:</label>
+        <div class="flex-row gap-2" style="margin: 8px 0 32px;">
+          <button class="btn-secondary" onclick="app.setLang('de')">🇩🇪 Deutsch</button>
+          <button class="btn-secondary" onclick="app.setLang('en')">🇬🇧 English</button>
+          <button class="btn-secondary" onclick="app.setLang('bks')">🇧🇦 BKS</button>
+        </div>
+        
+        <button class="btn-primary" id="ob-save-btn" data-i18n="start_order">Los geht's 🚀</button>
+      </div>
+    </div>
 
-        // 2. DATA GENERATOR (Mocking 200k distribution logic)
-        function initData() {
-            const species = [
-                {n: "Platanus x hispanica", s: "n.a."},
-                {n: "Malus sylvestris", s: "Edible"},
-                {n: "Taxus baccata", s: "Poisonous"},
-                {n: "Acer platanoides", s: "n.a."},
-                {n: "Tilia cordata", s: "n.a."}
-            ];
-            // Generating 100 sample rows for the UI (Virtualization simulation)
-            for(let i = 0; i < 100; i++) {
-                const sp = species[Math.floor(Math.random() * species.length)];
-                const v = Math.floor(Math.random() * 5);
-                const days = Math.floor(Math.random() * 500);
-                allTrees.push({
-                    id: 142000 + i,
-                    name: sp.n,
-                    status: sp.s,
-                    vitality: v,
-                    lastCheck: days,
-                    height: Math.floor(Math.random() * 30) + 5
-                });
-            }
+    <!-- 2. Table Picker -->
+    <div class="overlay" id="table-overlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="serif" style="font-size: 1.5rem; margin: 0 0 16px;" data-i18n="where_are_you">Wo sitzt du? 🪑</h3>
+        <div class="flex-col gap-3" id="table-list"></div>
+      </div>
+    </div>
+
+    <!-- 3. Cart Sheet -->
+    <div class="overlay" id="cart-overlay">
+      <div class="sheet" style="height: 85vh; display: flex; flex-direction: column;">
+        <div class="sheet-handle"></div>
+        <div class="flex-row" style="justify-content: space-between; margin-bottom: 16px;">
+          <h2 class="serif" style="font-size: 1.8rem; margin: 0;" data-i18n="your_order">Deine Auswahl</h2>
+          <button class="btn-icon" id="clear-cart-btn">🗑️</button>
+        </div>
+        
+        <div class="scrollable" style="flex: 1; padding-bottom: 0; min-height: 0; overflow-y: auto;" id="cart-items-container">
+          <!-- Cart items injected here -->
+        </div>
+        
+        <div style="padding-top: 20px; border-top: 1px solid var(--line); margin-top: auto;">
+          <div class="flex-row" style="justify-content: space-between; margin-bottom: 16px;">
+            <span class="text-muted font-bold" data-i18n="barista">Barista:</span>
+            <select id="barista-select" style="background: var(--card); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; font-weight: 800; outline: none;">
+              <option value="Aleks">Aleks</option>
+              <option value="Chef">Chef</option>
+            </select>
+          </div>
+          <div class="flex-row" style="justify-content: space-between; font-size: 1.5rem; font-weight: 900; margin-bottom: 20px;">
+            <span>Total</span>
+            <span class="text-accent" id="cart-sheet-total">€0.00</span>
+          </div>
+          <button class="btn-primary" id="checkout-btn"><span data-i18n="send_order">Bestellung Senden</span> 💬</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Checkout / Confirm Fullscreen -->
+    <div class="fullscreen-view" id="checkout-view">
+      <div class="header" style="justify-content: center;">
+        <h2 class="serif" style="margin: 0;" data-i18n="order_status">Bestellstatus</h2>
+      </div>
+      <div class="scrollable p-4 flex-col gap-4">
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <div style="font-size: 4rem; margin-bottom: 10px;">🎉</div>
+          <h1 class="serif" style="margin: 0; font-size: 2.2rem; color: var(--accent);" data-i18n="success_title">Wunderbar!</h1>
+          <p class="text-muted" data-i18n="success_desc">Deine Auswahl ist bereit für WhatsApp.</p>
+        </div>
+
+        <div class="card" style="background: var(--card); border: 1px solid var(--line-strong); border-radius: 16px; padding: 20px;">
+          <div class="flex-row" style="justify-content: space-between; margin-bottom: 16px;">
+            <span class="font-bold">Status</span>
+            <span class="chip" style="background: var(--ok); color: #fff; border:none;" id="status-text" data-i18n="status_sending">Wird gesendet...</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="order-progress"></div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-muted mb-2" style="margin: 0 0 8px;" data-i18n="quick_feedback">Schnelles Feedback?</h4>
+          <div class="feedback-scroll" id="feedback-container"></div>
+        </div>
+
+        <button class="btn-primary" id="wa-send-btn" style="background: #25D366; color: #fff; box-shadow: 0 4px 20px rgba(37,211,102,0.4);"><span data-i18n="open_whatsapp">WhatsApp Öffnen</span> ↗️</button>
+
+        <!-- Gamification -->
+        <div>
+          <h4 class="font-bold text-muted mb-2" style="margin: 32px 0 8px;" data-i18n="loyalty_card">Treuekarte</h4>
+          <div class="stamp-card" id="stamp-card">
+            <div class="stamp">☕</div><div class="stamp">☕</div><div class="stamp">☕</div><div class="stamp">☕</div><div class="stamp" style="font-size: 0.9rem;">🎁</div>
+          </div>
+        </div>
+
+        <!-- Mini Game -->
+        <div style="margin-top: 20px; text-align: center;">
+          <h4 class="serif text-accent" style="margin: 0 0 8px; font-size: 1.5rem;">CoffeeTris</h4>
+          <p class="text-xs text-muted" data-i18n="game_desc">Zocke eine Runde, während du wartest!</p>
+          <canvas id="coffeetris" width="240" height="400"></canvas>
+          <div class="flex-row" style="justify-content: center; gap: 16px; margin-top: 12px;">
+            <button class="btn-icon" id="ct-left">⬅️</button>
+            <button class="btn-icon" id="ct-rot">🔄</button>
+            <button class="btn-icon" id="ct-right">➡️</button>
+            <button class="btn-icon" id="ct-down">⬇️</button>
+          </div>
+          <div class="text-muted text-sm" style="margin-top: 12px;">Score: <span id="ct-score" class="font-bold text-accent">0</span> | High: <span id="ct-high">0</span></div>
+        </div>
+
+        <button class="btn-secondary" id="new-order-btn" style="margin-top: 40px; padding: 16px;" data-i18n="new_order">Neue Bestellung starten</button>
+      </div>
+    </div>
+    
+    <!-- Emoji Rain Target -->
+    <div id="emoji-rain"></div>
+
+  </div>
+  
+  <!-- APP LOGIC -->
+  <script>
+    /* --- CONFIG & DATA --- */
+    const TABLES=[{id:"t1",name:"Am Fenster",desc:"Gemütlicher Platz mit Blick auf die Straße"},{id:"t2",name:"Barhocker",desc:"Direkt am Geschehen"},{id:"t3",name:"Hinterer Raum",desc:"Ruhig & entspannt"},{id:"t4",name:"Couch",desc:"Perfekt für zwei"},{id:"t5",name:"Schanigarten",desc:"Draußen an der Sonne"}];
+    const MENU=[
+      {id:"m1",cat:"kaffee",icon:"☕",price:3.50,specials:true,name:{de:"Haus-Filter",en:"House Drip",bks:"Kućna Filter"},desc:{de:"Floral & fruchtig",en:"Floral & fruity notes",bks:"Cvjetno i voćno"}},
+      {id:"m2",cat:"kaffee",icon:"🥤",price:4.20,name:{de:"Iced Latte",en:"Iced Latte",bks:"Ledeni Latte"},desc:{de:"Mit Hafermilch +0.50",en:"Oat milk +0.50",bks:"Zobeno mlijeko +0.50"}},
+      {id:"m3",cat:"essen",icon:"🥐",price:2.80,specials:true,name:{de:"Buttercroissant",en:"Butter Croissant",bks:"Kroasan od putera"},desc:{de:"Frisch aus dem Ofen",en:"Freshly baked",bks:"Svježe pečen"}},
+      {id:"m4",cat:"essen",icon:"🍪",price:3.00,name:{de:"Salty Choc Cookie",en:"Salty Choc Cookie",bks:"Slani Čoko Keksić"},desc:{de:"Mit Meersalz",en:"With sea salt flakes",bks:"Sa morskom soli"}},
+      {id:"m5",cat:"alkohol",icon:"🍷",price:5.50,name:{de:"Naturwein Glas",en:"Natural Wine Glass",bks:"Čaša Prirodnog Vina"},desc:{de:"Frag nach dem offenen",en:"Ask for the open one",bks:"Pitaj za otvoreno"}},
+      {id:"m6",cat:"alkohol",icon:"🍺",price:4.00,specials:true,name:{de:"Craft Bier",en:"Craft Beer",bks:"Craft Pivo"},desc:{de:"Kalt & erfrischend",en:"Cold & refreshing",bks:"Hladno i osvježavajuće"}}
+    ];
+
+    const I18N = {
+      de: {
+        greeting: "Hi, {name}! ☕", table_sel: "Tisch wählen", cat_all:"Alle", cat_coffee:"Kaffee", cat_food:"Essen & Sweets", cat_alcohol:"Drinks",
+        specials_title: "Specials des Tages ✨", favorites: "Favoriten", last_order: "Letzte Bestellung",
+        add: "Hinzufügen", cart_view: "Warenkorb", total: "Gesamt", clear: "Leeren",
+        onbaording_title:"Willkommen! 👋", onboarding_desc: "Wie dürfen wir dich nennen?",
+        lang_select: "Sprache wählen:", start_order: "Los geht's 🚀",
+        where_are_you: "Wo sitzt du? 🪑", your_order: "Deine Auswahl", barista: "Barista:", send_order: "Bestellung Senden",
+        order_status: "Bestellstatus", success_title: "Wunderbar!", success_desc: "Deine Auswahl ist bereit für WhatsApp.",
+        status_sending: "Wird gesendet...", open_whatsapp: "WhatsApp Öffnen", quick_feedback: "Schnelles Feedback?",
+        loyalty_card: "Treuekarte", game_desc: "Zocke eine Runde, während du wartest!", new_order: "Neue Bestellung starten",
+        feedback_lines: ["Bester Kaffee! 🖤", "Freu mich drauf! 🤙", "Beeilt euch! 🚀", "Macht es doppio! ☕☕", "Ihr seid die Besten! 🫶"]
+      },
+      en: {
+        greeting: "Hi, {name}! ☕", table_sel: "Select Table", cat_all:"All", cat_coffee:"Coffee", cat_food:"Food & Sweets", cat_alcohol:"Drinks",
+        specials_title: "Daily Specials ✨", favorites: "Favorites", last_order: "Last Order",
+        add: "Add", cart_view: "View Cart", total: "Total", clear: "Clear",
+        onbaording_title:"Welcome! 👋", onboarding_desc: "What should we call you?",
+        lang_select: "Select Language:", start_order: "Let's Go 🚀",
+        where_are_you: "Where are you sitting? 🪑", your_order: "Your Order", barista: "Barista:", send_order: "Send Order",
+        order_status: "Order Status", success_title: "Wonderful!", success_desc: "Your selection is ready for WhatsApp.",
+        status_sending: "Sending...", open_whatsapp: "Open WhatsApp", quick_feedback: "Quick Feedback?",
+        loyalty_card: "Loyalty Card", game_desc: "Play a round while you wait!", new_order: "Start New Order",
+        feedback_lines: ["Best Coffee! 🖤", "Looking forward! 🤙", "Hurry up! 🚀", "Make it doppio! ☕☕", "You guys rock! 🫶"]
+      },
+      bks: {
+        greeting: "Zdravo, {name}! ☕", table_sel: "Izaberi Sto", cat_all:"Sve", cat_coffee:"Kafa", cat_food:"Hrana & Slatko", cat_alcohol:"Pića",
+        specials_title: "Dnevni Specijali ✨", favorites: "Favoriti", last_order: "Zadnja Narudžba",
+        add: "Dodaj", cart_view: "Korpa", total: "Ukupno", clear: "Očisti",
+        onbaording_title:"Dobrodošli! 👋", onboarding_desc: "Kako da te zovemo?",
+        lang_select: "Izaberi Jezik:", start_order: "Idemo 🚀",
+        where_are_you: "Gdje sjediš? 🪑", your_order: "Tvoja Narudžba", barista: "Barista:", send_order: "Pošalji Narudžbu",
+        order_status: "Status Narudžbe", success_title: "Odlično!", success_desc: "Tvoja narudžba je spremna za WhatsApp.",
+        status_sending: "Šaljemo...", open_whatsapp: "Otvori WhatsApp", quick_feedback: "Brzi Feedback?",
+        loyalty_card: "Kartica Vjernosti", game_desc: "Odigraj partiju dok čekaš!", new_order: "Započni Novu",
+        feedback_lines: ["Najbolja kafa! 🖤", "Jedva čekam! 🤙", "Požurite! 🚀", "Neka bude duplo! ☕☕", "Najjači ste! 🫶"]
+      }
+    };
+    const FUNNY_NAMES = {
+      de: ["Espresso-Lover", "Kaffee-Junkie", "Schlafmütze", "Bohnen-Boss", "Milchschaum-Schlürfer"],
+      en: ["Espresso Lover", "Coffee Junkie", "Sleepyhead", "Bean Boss", "Foam Slurper"],
+      bks: ["Ljubitelj Espressa", "Kafa Džanki", "Spavalica", "Šef u Zrnu", "Pjena Pijac"]
+    };
+
+    /* --- STATE STORE --- */
+    class Store {
+      static get(k, def) { try { return JSON.parse(localStorage.getItem('cw_'+k)) || def; } catch { return def; } }
+      static set(k, v) { localStorage.setItem('cw_'+k, JSON.stringify(v)); }
+    }
+
+    /* --- MAIN APP CLASS --- */
+    class CoffeewerkApp {
+      constructor() {
+        this.state = {
+          name: Store.get('name', ''),
+          lang: Store.get('lang', 'de'),
+          theme: Store.get('theme', 'dark'),
+          table: Store.get('table', ''),
+          cart: Store.get('cart', []),
+          favorites: Store.get('favorites', []),
+          stamps: Store.get('stamps', 0),
+          lastOrder: Store.get('last_order', null),
+          filterCat: 'all'
+        };
+
+        this.init();
+      }
+
+      init() {
+        // Handle URL param Table
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('table')) {
+          this.state.table = urlParams.get('table');
+          Store.set('table', this.state.table);
         }
-        initData();
 
-        // 3. MAPBOX / PMTILES PROTOCOL
-        const protocol = new pmtiles.Protocol();
-        maplibregl.addProtocol("pmtiles", protocol.add);
+        this.applyTheme();
+        this.applyLang();
+        this.bindEvents();
+        this.renderAll();
 
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-            center: [16.3738, 48.2082], zoom: 12
-        });
+        // Check Onboarding
+        if(!this.state.name) {
+          this.showOnboarding();
+        }
+      }
 
-        map.on('load', () => {
-            // Only attempt to add source if URL is replaced
-            if(!PMTILES_URL.includes("REPLACE")) {
-                map.addSource('vienna_trees', {
-                    type: 'vector',
-                    url: `pmtiles://${PMTILES_URL}`
-                });
+      // STATE MUTATORS
+      updateState(key, val) { this.state[key] = val; Store.set(key, val); }
+      
+      toggleTheme() {
+        const next = this.state.theme === 'dark' ? 'light' : 'dark';
+        this.updateState('theme', next);
+        this.applyTheme();
+      }
 
-                map.addLayer({
-                    id: 'tree-layer',
-                    type: 'circle',
-                    source: 'vienna_trees',
-                    'source-layer': 'vienna_trees', // Match your PMTiles internal layer name
-                    paint: {
-                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6],
-                        'circle-color': [
-                            'match', ['get', 'GATTUNG'], 
-                            ['Malus', 'Pyrus', 'Prunus'], '#facc15', // Edible
-                            ['Taxus', 'Laburnum'], '#a855f7', // Poisonous
-                            ['step', ['get', 'BAUMHOEHE'], 
-                                '#6ee7b7', 8, '#34d399', 13, '#10b981', 18, '#059669', 23, '#047857', 28, '#065f46', 33, '#064e3b'
-                            ]
-                        ]
-                    }
-                });
-            }
-            updateRegistry();
-        });
+      applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.state.theme);
+      }
 
-        // 4. UI CONTROLS
-        function toggleVitality(v) {
-            const btn = document.querySelector(`button[data-v="${v}"]`);
-            if (activeVitalities.includes(v)) {
-                activeVitalities = activeVitalities.filter(x => x !== v);
-                btn.classList.remove('active');
+      setLang(lang) {
+        this.updateState('lang', lang);
+        this.applyLang();
+        this.renderFunnyNames();
+        // re-render dynamic content
+        this.renderMenu();
+        this.renderSpecials();
+      }
+
+      applyLang() {
+        const dict = I18N[this.state.lang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if(dict[key]) {
+            if(key === 'greeting') {
+              el.innerText = dict[key].replace('{name}', this.state.name || 'Guest');
             } else {
-                activeVitalities.push(v);
-                btn.classList.add('active');
+              el.innerText = dict[key];
             }
-            applyMapFilters();
-        }
+          }
+        });
+      }
 
-        function filterMaintenance() {
-            maintenanceMode = !maintenanceMode;
-            document.getElementById('maint-btn').classList.toggle('active', maintenanceMode);
-            applyMapFilters();
+      // CART LOGIC
+      addToCart(id) {
+        const item = this.state.cart.find(i => i.id === id);
+        if(item) item.qty++;
+        else this.state.cart.push({id, qty: 1});
+        Store.set('cart', this.state.cart);
+        this.renderCart();
+        this.animateCartIcon();
+      }
+      
+      removeFromCart(id) {
+        const idx = this.state.cart.findIndex(i => i.id === id);
+        if(idx > -1) {
+          this.state.cart[idx].qty--;
+          if(this.state.cart[idx].qty <= 0) this.state.cart.splice(idx, 1);
         }
+        Store.set('cart', this.state.cart);
+        this.renderCart();
+      }
 
-        function applyMapFilters() {
-            // GPU-Side Filtering for Map
-            const filter = ['all', ['in', ['get', 'vitality'], ['literal', activeVitalities]]];
-            if (maintenanceMode) filter.push(['>', ['get', 'lastCheck'], 365]);
-            
-            if (map.getLayer('tree-layer')) {
-                map.setFilter('tree-layer', filter);
+      toggleFav(id) {
+        const idx = this.state.favorites.indexOf(id);
+        if(idx > -1) this.state.favorites.splice(idx, 1);
+        else this.state.favorites.push(id);
+        Store.set('favorites', this.state.favorites);
+        this.renderFavorites();
+        this.renderMenu();
+      }
+
+      // RENDERING
+      renderAll() {
+        this.renderMenu();
+        this.renderSpecials();
+        this.renderFavorites();
+        this.renderCart();
+        this.renderTables();
+        this.renderReorder();
+        this.applyLang();
+      }
+
+      renderMenu() {
+        const cont = document.getElementById('menu-container');
+        cont.innerHTML = '';
+        const filtered = this.state.filterCat === 'all' ? MENU : MENU.filter(m => m.cat === this.state.filterCat);
+        
+        filtered.forEach(item => {
+          const qty = this.state.cart.find(c => c.id === item.id)?.qty || 0;
+          const isFav = this.state.favorites.includes(item.id);
+          
+          cont.innerHTML += `
+            <div class="menu-item" onclick="app.addToCart('${item.id}')">
+              ${qty > 0 ? `<div class="qty-badge">${qty}</div>` : ''}
+              <div class="info">
+                <div class="icon">${item.icon}</div>
+                <div class="details">
+                  <div class="title">${item.name[this.state.lang]}</div>
+                  <div class="desc">${item.desc[this.state.lang]}</div>
+                  <div class="price">€${item.price.toFixed(2)}</div>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="add-btn" onclick="event.stopPropagation(); app.addToCart('${item.id}')">+</button>
+                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleFav('${item.id}')">♥</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      renderSpecials() {
+        const cont = document.getElementById('specials-container');
+        const specials = MENU.filter(m => m.specials);
+        cont.innerHTML = specials.map(item => `
+          <div class="special-card" onclick="app.addToCart('${item.id}')">
+            <div style="font-size: 3rem;">${item.icon}</div>
+            <div class="flex-col" style="justify-content:center;">
+              <div class="font-bold" style="font-size: 1.1rem; margin-bottom: 4px;">${item.name[this.state.lang]}</div>
+              <div class="text-accent font-bold">€${item.price.toFixed(2)}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      renderFavorites() {
+        const sec = document.getElementById('favorites-section');
+        const cont = document.getElementById('favorites-list');
+        if(this.state.favorites.length === 0) { sec.classList.add('hidden'); return; }
+        sec.classList.remove('hidden');
+        
+        const favItems = this.state.favorites.map(id => MENU.find(m => m.id === id)).filter(Boolean);
+        cont.innerHTML = favItems.map(item => `
+          <div class="chip" onclick="app.addToCart('${item.id}')">
+            ${item.icon} ${item.name[this.state.lang]} <span style="color:var(--accent)">+</span>
+          </div>
+        `).join('');
+      }
+
+      renderReorder() {
+        const sec = document.getElementById('reorder-section');
+        const cont = document.getElementById('reorder-list');
+        if(!this.state.lastOrder) { sec.classList.add('hidden'); return; }
+        sec.classList.remove('hidden');
+        
+        cont.innerHTML = this.state.lastOrder.items.map(cartItem => {
+          const m = MENU.find(x => x.id === cartItem.id);
+          return m ? `
+            <div class="chip" style="background:var(--card-hover)" onclick="app.addToCart('${m.id}')">
+              ${m.icon} ${cartItem.qty}x ${m.name[this.state.lang]}
+            </div>
+          ` : '';
+        }).join('');
+      }
+
+      renderCart() {
+        const count = this.state.cart.reduce((a,b) => a + b.qty, 0);
+        document.getElementById('cart-count').innerText = count;
+        
+        const float = document.getElementById('cart-float-btn');
+        if(count > 0) float.classList.add('visible');
+        else float.classList.remove('visible');
+
+        let total = 0;
+        const cont = document.getElementById('cart-items-container');
+        cont.innerHTML = this.state.cart.map(c => {
+          const m = MENU.find(x => x.id === c.id);
+          total += m.price * c.qty;
+          return `
+            <div class="flex-row" style="justify-content:space-between; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:12px;">
+              <div class="flex-row gap-3">
+                <div style="font-size: 1.5rem; background: var(--card-hover); padding: 8px; border-radius: 8px;">${m.icon}</div>
+                <div>
+                  <div class="font-bold">${m.name[this.state.lang]}</div>
+                  <div class="text-accent font-bold">€${(m.price * c.qty).toFixed(2)}</div>
+                </div>
+              </div>
+              <div class="flex-row gap-2" style="background: var(--card); border-radius: 99px; padding: 4px;">
+                <button onclick="app.removeFromCart('${c.id}')" style="width: 28px; height: 28px; background:var(--bg); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">-</button>
+                <div class="font-bold" style="width: 20px; text-align:center;">${c.qty}</div>
+                <button onclick="app.addToCart('${c.id}')" style="width: 28px; height: 28px; background:var(--accent); color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">+</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        if(this.state.cart.length === 0) cont.innerHTML = `<div class="text-muted text-center" style="margin-top:20px;">Warenkorb ist leer</div>`;
+
+        document.getElementById('cart-total').innerText = '€' + total.toFixed(2);
+        document.getElementById('cart-sheet-total').innerText = '€' + total.toFixed(2);
+      }
+
+      renderTables() {
+        const cont = document.getElementById('table-list');
+        cont.innerHTML = TABLES.map(t => `
+          <div class="menu-item" style="border-color: ${this.state.table === t.id ? 'var(--accent)' : 'var(--line)'}" onclick="app.selectTable('${t.id}')">
+            <div class="info">
+              <div class="icon">🪑</div>
+              <div class="details">
+                <div class="title">${t.name}</div>
+                <div class="desc">${t.desc}</div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        
+        const label = this.state.table ? TABLES.find(t=>t.id===this.state.table)?.name : I18N[this.state.lang].table_sel;
+        document.getElementById('table-label').innerText = label;
+      }
+
+      renderFunnyNames() {
+        const cont = document.getElementById('funny-names-container');
+        cont.innerHTML = FUNNY_NAMES[this.state.lang].map(n => `
+          <button class="chip" onclick="document.getElementById('ob-name-input').value = '${n}'">${n}</button>
+        `).join('');
+      }
+
+      // ACTIONS
+      showOnboarding() {
+        document.getElementById('onboarding-overlay').classList.add('active');
+        this.renderFunnyNames();
+      }
+
+      saveOnboarding() {
+        const name = document.getElementById('ob-name-input').value.trim();
+        if(name) {
+          this.updateState('name', name);
+          document.getElementById('onboarding-overlay').classList.remove('active');
+          this.applyLang();
+        }
+      }
+
+      selectTable(id) {
+        this.updateState('table', id);
+        this.renderTables();
+        document.getElementById('table-overlay').classList.remove('active');
+      }
+
+      animateCartIcon() {
+        const f = document.getElementById('cart-float-btn');
+        f.classList.remove('shake');
+        void f.offsetWidth; // trigger reflow
+        f.classList.add('shake');
+      }
+
+      sendOrder() {
+        if(!this.state.table) { alert(I18N[this.state.lang].where_are_you); return; }
+        if(this.state.cart.length === 0) return;
+
+        // Save order and clear cart
+        const barista = document.getElementById('barista-select').value;
+        this.updateState('lastOrder', { items: [...this.state.cart], barista });
+        this.updateState('stamps', Math.min(this.state.stamps + 1, 5));
+        this.updateState('cart', []);
+        
+        document.getElementById('cart-overlay').classList.remove('active');
+        
+        // Show Checkout View
+        this.showCheckout();
+      }
+
+      showCheckout() {
+        document.getElementById('checkout-view').classList.add('active');
+        this.triggerEmojiRain();
+        this.renderStamps();
+        this.renderFeedbackTiles();
+        
+        // Progress Bar Simulation
+        const pbar = document.getElementById('order-progress');
+        const stausText = document.getElementById('status-text');
+        pbar.style.width = '10%';
+        pbar.style.transition = 'width 1.5s linear';
+        
+        setTimeout(() => {
+          pbar.style.width = '60%';
+          stausText.innerText = "WhatsApp geöffnet";
+          stausText.style.background = "#25D366";
+        }, 1500);
+
+        if(window.CoffeeTris) window.CoffeeTris.start();
+      }
+
+      renderStamps() {
+        const cont = document.getElementById('stamp-card');
+        cont.innerHTML = Array.from({length: 5}).map((_, i) => `<div class="stamp ${i < this.state.stamps ? 'earned' : ''}">${i===4 ? '🎁' : '☕'}</div>`).join('');
+      }
+
+      renderFeedbackTiles() {
+        const cont = document.getElementById('feedback-container');
+        cont.innerHTML = I18N[this.state.lang].feedback_lines.map((l, i) => `
+          <div class="feedback-tile" onclick="app.selectFeedback(this, '${l}')">${l}</div>
+        `).join('');
+      }
+
+      selectFeedback(el, text) {
+        document.querySelectorAll('.feedback-tile').forEach(t => t.classList.remove('selected'));
+        el.classList.add('selected');
+        this.selectedFeedback = text;
+      }
+
+      openWhatsApp() {
+        const phone = "1234567890"; // Placeholder
+        const order = this.state.lastOrder;
+        const tableStr = TABLES.find(t=>t.id===this.state.table)?.name || this.state.table;
+        
+        let msg = `Neu von ${this.state.name} an Tisch: ${tableStr}%0A`;
+        order.items.forEach(c => {
+          const m = MENU.find(x => x.id === c.id);
+          if(m) msg += `• ${c.qty}x ${m.name[this.state.lang]}%0A`;
+        });
+        if(this.selectedFeedback) msg += `%0AFeedback: ${this.selectedFeedback}`;
+        
+        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      }
+
+      triggerEmojiRain() {
+        const rain = document.getElementById('emoji-rain');
+        rain.innerHTML = '';
+        const emojis = ['☕','🍩','🥐','✨','💛'];
+        for(let i=0; i<30; i++) {
+          const e = document.createElement('div');
+          e.className = 'raindrop';
+          e.innerText = emojis[Math.floor(Math.random()*emojis.length)];
+          e.style.left = Math.random()*100 + 'vw';
+          e.style.animationDuration = (Math.random()*1.5 + 1.5) + 's';
+          e.style.animationDelay = (Math.random()*0.5) + 's';
+          rain.appendChild(e);
+        }
+        setTimeout(() => { rain.innerHTML=''; }, 3500);
+      }
+
+      // EVENT BINDINGS
+      bindEvents() {
+        document.getElementById('theme-btn').onclick = () => this.toggleTheme();
+        document.getElementById('lang-btn').onclick = () => {
+          const l = this.state.lang;
+          this.setLang(l === 'de' ? 'en' : (l === 'en' ? 'bks' : 'de'));
+          document.getElementById('lang-btn').innerText = this.state.lang.toUpperCase();
+        };
+        document.getElementById('table-btn').onclick = () => document.getElementById('table-overlay').classList.add('active');
+        
+        document.getElementById('cat-tabs').addEventListener('click', e => {
+          if(e.target.classList.contains('tab')) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+            this.state.filterCat = e.target.getAttribute('data-cat');
+            this.renderMenu();
+          }
+        });
+
+        document.getElementById('ob-save-btn').onclick = () => this.saveOnboarding();
+        document.getElementById('cart-float-btn').onclick = () => {
+          document.getElementById('cart-overlay').classList.add('active');
+          this.renderCart();
+        };
+        
+        document.getElementById('clear-cart-btn').onclick = () => {
+          this.updateState('cart', []);
+          this.renderCart();
+          document.getElementById('cart-overlay').classList.remove('active');
+        };
+
+        document.getElementById('checkout-btn').onclick = () => this.sendOrder();
+        document.getElementById('wa-send-btn').onclick = () => this.openWhatsApp();
+        document.getElementById('new-order-btn').onclick = () => {
+          document.getElementById('checkout-view').classList.remove('active');
+          if(window.CoffeeTris) window.CoffeeTris.stop();
+          this.renderAll();
+        };
+
+        // Swipe down to dismiss overlays
+        document.querySelectorAll('.overlay').forEach(o => {
+          o.onclick = (e) => { if(e.target === o) o.classList.remove('active'); };
+        });
+
+        // Initialize button text
+        document.getElementById('lang-btn').innerText = this.state.lang.toUpperCase();
+      }
+    }
+
+    /* --- COFFEETRIS MINI GAME --- */
+    class CoffeeTrisMap {
+      constructor(canvasId) {
+        this.cvs = document.getElementById(canvasId);
+        this.ctx = this.cvs.getContext('2d');
+        this.w = 12; this.h = 20;
+        this.bw = this.cvs.width / this.w;
+        this.bh = this.cvs.height / this.h;
+        this.board = Array(this.h).fill().map(() => Array(this.w).fill(null));
+        this.pieces = ['☕','🥐','🥨','🍪','🍩','🍰','🥂'];
+        this.shapes = [
+          [[1,1,1,1]], // I
+          [[1,1],[1,1]], // O
+          [[0,1,0],[1,1,1]], // T
+          [[1,0,0],[1,1,1]], // L
+          [[0,0,1],[1,1,1]], // J
+          [[0,1,1],[1,1,0]], // S
+          [[1,1,0],[0,1,1]]  // Z
+        ];
+        this.score = 0;
+        this.high = Store.get('ct_high', 0);
+        document.getElementById('ct-high').innerText = this.high;
+        
+        this.active = null;
+        this.timer = null;
+        this.bindCtrls();
+      }
+
+      start() {
+        if(this.timer) return;
+        this.board = Array(this.h).fill().map(() => Array(this.w).fill(null));
+        this.score = 0;
+        this.spawn();
+        this.timer = setInterval(() => this.tick(), 700);
+        this.draw();
+      }
+
+      stop() {
+        clearInterval(this.timer);
+        this.timer = null;
+      }
+
+      spawn() {
+        const type = Math.floor(Math.random() * this.shapes.length);
+        const emoji = this.pieces[Math.floor(Math.random() * this.pieces.length)];
+        this.active = { shape: this.shapes[type], emoji, x: Math.floor(this.w/2)-1, y: 0 };
+        if(this.collide(this.active.x, this.active.y, this.active.shape)) {
+          this.gameOver();
+        }
+      }
+
+      tick() {
+        if(!this.collide(this.active.x, this.active.y + 1, this.active.shape)) {
+          this.active.y++;
+        } else {
+          this.merge();
+          this.clearLines();
+          this.spawn();
+        }
+        this.draw();
+      }
+
+      collide(ox, oy, shape) {
+        for(let r=0; r<shape.length; r++) {
+          for(let c=0; c<shape[r].length; c++) {
+            if(shape[r][c]) {
+              let nx = ox + c; let ny = oy + r;
+              if(nx < 0 || nx >= this.w || ny >= this.h || (ny >= 0 && this.board[ny][nx])) return true;
             }
-            updateRegistry();
+          }
         }
+        return false;
+      }
 
-        function updateRegistry() {
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            const filtered = allTrees.filter(t => 
-                activeVitalities.includes(t.vitality) && 
-                (!maintenanceMode || t.lastCheck > 365) &&
-                (t.name.toLowerCase().includes(searchTerm))
-            );
-
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = filtered.map(t => `
-                <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition cursor-pointer">
-                    <td class="p-4">
-                        <span class="text-[10px] font-mono text-slate-500">#${t.id}</span><br>
-                        <span class="font-bold text-sm text-white">${t.name}</span>
-                    </td>
-                    <td class="p-4">
-                        <span class="status-badge" style="background: ${getVitColor(t.vitality)}">Class ${t.vitality}</span>
-                    </td>
-                    <td class="p-4">
-                        <span class="status-badge ${getStatusStyle(t.status)}">${t.status}</span>
-                    </td>
-                    <td class="p-4 font-mono text-xs ${t.lastCheck > 365 ? 'text-red-400 font-bold' : 'text-slate-400'}">
-                        ${t.lastCheck} days ago
-                    </td>
-                    <td class="p-4 font-mono text-emerald-400 font-bold">${t.height}m</td>
-                </tr>
-            `).join('');
+      merge() {
+        let f = this.active;
+        for(let r=0; r<f.shape.length; r++) {
+          for(let c=0; c<f.shape[r].length; c++) {
+            if(f.shape[r][c]) this.board[f.y+r][f.x+c] = f.emoji;
+          }
         }
+      }
 
-        function getVitColor(v) {
-            const colors = ['#10b981', '#4ade80', '#facc15', '#f97316', '#ef4444'];
-            return colors[v];
+      clearLines() {
+        let lines = 0;
+        for(let r=this.h-1; r>=0; r--) {
+          if(this.board[r].every(c => c !== null)) {
+            this.board.splice(r, 1);
+            this.board.unshift(Array(this.w).fill(null));
+            lines++;
+            r++; // re-check the same row index which is now the one above
+          }
         }
+        if(lines > 0) {
+          this.score += lines * 100;
+          document.getElementById('ct-score').innerText = this.score;
+          if(this.score > this.high) {
+            this.high = this.score;
+            Store.set('ct_high', this.high);
+            document.getElementById('ct-high').innerText = this.high;
+          }
+        }
+      }
 
-        function getStatusStyle(s) {
-            if(s === 'Edible') return 'bg-yellow-500 text-black';
-            if(s === 'Poisonous') return 'bg-purple-600 text-white';
-            return 'bg-slate-700 text-slate-300';
+      move(dx) {
+        if(!this.active) return;
+        if(!this.collide(this.active.x + dx, this.active.y, this.active.shape)) {
+          this.active.x += dx;
+          this.draw();
         }
-    </script>
+      }
+
+      drop() {
+        if(!this.active) return;
+        while(!this.collide(this.active.x, this.active.y + 1, this.active.shape)) {
+          this.active.y++;
+        }
+        this.tick();
+      }
+
+      rotate() {
+        if(!this.active) return;
+        const s = this.active.shape;
+        let ns = Array(s[0].length).fill().map(() => Array(s.length).fill(0));
+        for(let r=0; r<s.length; r++) {
+          for(let c=0; c<s[r].length; c++) {
+            ns[c][s.length-1-r] = s[r][c];
+          }
+        }
+        if(!this.collide(this.active.x, this.active.y, ns)) {
+          this.active.shape = ns;
+          this.draw();
+        }
+      }
+
+      gameOver() {
+        this.stop();
+        this.ctx.fillStyle = "rgba(0,0,0,0.7)";
+        this.ctx.fillRect(0,0,this.cvs.width, this.cvs.height);
+        this.ctx.fillStyle = "#FFD700";
+        this.ctx.font = "24px 'Fraunces'";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("Game Over", this.cvs.width/2, this.cvs.height/2);
+      }
+
+      draw() {
+        this.ctx.clearRect(0,0, this.cvs.width, this.cvs.height);
+        // grid
+        this.ctx.strokeStyle = "#4E3418";
+        for(let i=0; i<=this.w; i++) { this.ctx.beginPath(); this.ctx.moveTo(i*this.bw, 0); this.ctx.lineTo(i*this.bw, this.cvs.height); this.ctx.stroke(); }
+        for(let i=0; i<=this.h; i++) { this.ctx.beginPath(); this.ctx.moveTo(0, i*this.bh); this.ctx.lineTo(this.cvs.width, i*this.bh); this.ctx.stroke(); }
+        
+        this.ctx.font = "20px sans-serif";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+
+        // board
+        for(let r=0; r<this.h; r++) {
+          for(let c=0; c<this.w; c++) {
+            if(this.board[r][c]) {
+              this.ctx.fillText(this.board[r][c], c*this.bw + this.bw/2, r*this.bh + this.bh/2);
+            }
+          }
+        }
+        // active piece
+        if(this.active) {
+          for(let r=0; r<this.active.shape.length; r++) {
+            for(let c=0; c<this.active.shape[r].length; c++) {
+              if(this.active.shape[r][c]) {
+                this.ctx.fillText(this.active.emoji, (this.active.x+c)*this.bw + this.bw/2, (this.active.y+r)*this.bh + this.bh/2);
+              }
+            }
+          }
+        }
+      }
+
+      bindCtrls() {
+        document.getElementById('ct-left').onclick = ()=>this.move(-1);
+        document.getElementById('ct-right').onclick = ()=>this.move(1);
+        document.getElementById('ct-rot').onclick = ()=>this.rotate();
+        document.getElementById('ct-down').onclick = ()=>this.drop();
+        window.addEventListener('keydown', e=>{
+          if(!this.timer) return;
+          if(e.key==='ArrowLeft') this.move(-1);
+          if(e.key==='ArrowRight') this.move(1);
+          if(e.key==='ArrowUp') this.rotate();
+          if(e.key==='ArrowDown') this.drop();
+        });
+      }
+    }
+
+    /* --- ADMIN PANEL (Easter Egg) --- */
+    class AdminPanel {
+      constructor() {
+        this.taps = 0;
+        this.timer = null;
+        this.disabled = Store.get('disabled_items', []);
+        
+        document.getElementById('logo-trigger').addEventListener('click', () => {
+          this.taps++;
+          clearTimeout(this.timer);
+          if(this.taps >= 5) {
+            this.taps = 0;
+            this.toggleAdmin();
+          } else {
+            this.timer = setTimeout(() => this.taps = 0, 1500);
+          }
+        });
+      }
+
+      toggleAdmin() {
+        let panel = document.getElementById('admin-overlay');
+        if(!panel) {
+          panel = document.createElement('div');
+          panel.id = 'admin-overlay';
+          panel.className = 'overlay active';
+          panel.innerHTML = `
+            <div class="sheet" style="padding-bottom: 40px; transform:translateY(0)">
+              <div class="flex-row" style="justify-content:space-between; margin-bottom:16px;">
+                <h2 class="serif" style="margin:0; color:var(--bad)">Admin Panel</h2>
+                <button class="btn-icon" onclick="document.getElementById('admin-overlay').classList.remove('active')">❌</button>
+              </div>
+              <h4 class="text-muted font-bold mb-2">Item Availability</h4>
+              <div class="flex-col gap-2" id="admin-toggles" style="max-height: 200px; overflow-y:auto; border:1px solid var(--line-strong); padding:8px; border-radius:12px;"></div>
+              
+              <h4 class="text-muted font-bold" style="margin:24px 0 8px;">Table QR Codes</h4>
+              <div class="horizontal-scroll" id="admin-qrs"></div>
+            </div>`;
+          document.querySelector('.app-container').appendChild(panel);
+        } else {
+          panel.classList.add('active');
+        }
+        this.render();
+      }
+
+      toggleItem(id) {
+        if(this.disabled.includes(id)) this.disabled = this.disabled.filter(x=>x!==id);
+        else this.disabled.push(id);
+        Store.set('disabled_items', this.disabled);
+        this.render();
+        
+        // Hide from public menu temporarily
+        window.app.renderMenu();
+        window.app.renderSpecials();
+      }
+
+      render() {
+        const toggles = document.getElementById('admin-toggles');
+        if(toggles) toggles.innerHTML = MENU.map(m => `
+          <div class="flex-row" style="justify-content:space-between; background:var(--card); padding:8px 12px; border-radius:8px;">
+            <span style="${this.disabled.includes(m.id)?'text-decoration:line-through;opacity:0.5':''}"><span style="display:inline-block;width:24px">${m.icon}</span> ${m.name['de']}</span>
+            <button class="chip" onclick="window.admin.toggleItem('${m.id}')" style="background:${this.disabled.includes(m.id)?'var(--bad)':'var(--ok)'}">${this.disabled.includes(m.id)?'Off':'On'}</button>
+          </div>
+        `).join('');
+
+        const qrs = document.getElementById('admin-qrs');
+        const baseUrl = window.location.origin + window.location.pathname;
+        if(qrs) qrs.innerHTML = TABLES.map(t => {
+          const tableUrl = baseUrl + "?table=" + t.id;
+          const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(tableUrl);
+          return `
+            <div style="text-align:center; background:var(--card); padding:12px; border-radius:12px; border:1px solid var(--line-strong); flex: 0 0 auto;">
+              <p class="font-bold text-sm" style="margin:0 0 8px;">${t.name}</p>
+              <img src="${qrUrl}" alt="QR ${t.name}" style="width:100px; height:100px; margin:0 auto; border-radius:8px;">
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Attach to window and hide disabled items in main app
+    const app = new CoffeewerkApp();
+    window.app = app;
+    window.admin = new AdminPanel();
+    window.CoffeeTris = new CoffeeTrisMap('coffeetris');
+    
+    // Inject active filtering
+    const origRenderMenu = app.renderMenu;
+    app.renderMenu = function() {
+      const dbMenu = [...MENU];
+      MENU.splice(0, MENU.length, ...dbMenu.filter(m => !window.admin.disabled.includes(m.id)));
+      origRenderMenu.call(this);
+      MENU.splice(0, MENU.length, ...dbMenu);
+    };
+    
+    app.renderMenu();
+
+  </script>
+
 </body>
 </html>
+
